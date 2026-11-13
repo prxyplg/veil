@@ -4,6 +4,60 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>prxy+</title>
+  <script>
+    (function () {
+      const STORAGE_KEY = "prxy_verified_user";
+      let verified = false;
+
+      // 1. Check URL hash
+      if (window.location.hash === "#verified") verified = true;
+
+      // 2. Check window.name (persists across reloads even on file://)
+      if (!verified && window.name === STORAGE_KEY) verified = true;
+
+      // 3. Check localStorage & sessionStorage
+      if (!verified) {
+        try {
+          if (localStorage.getItem(STORAGE_KEY) === "true" || sessionStorage.getItem(STORAGE_KEY) === "true") {
+            verified = true;
+          }
+        } catch (e) {}
+      }
+
+      // 4. Check Cookie
+      if (!verified) {
+        try {
+          if (document.cookie.split("; ").some(row => row === `${STORAGE_KEY}=true`)) {
+            verified = true;
+          }
+        } catch (e) {}
+      }
+
+      if (verified) {
+        document.documentElement.classList.add("is-verified");
+      }
+
+      // 5. Async fallback: Check IndexedDB in case other storages were wiped
+      if (!verified && window.indexedDB) {
+        try {
+          const req = indexedDB.open("prxy_auth_db", 1);
+          req.onupgradeneeded = (e) => {
+            e.target.result.createObjectStore("auth");
+          };
+          req.onsuccess = (e) => {
+            const db = e.target.result;
+            const tx = db.transaction("auth", "readonly");
+            const getReq = tx.objectStore("auth").get(STORAGE_KEY);
+            getReq.onsuccess = () => {
+              if (getReq.result === true) {
+                document.documentElement.classList.add("is-verified");
+              }
+            };
+          };
+        } catch (e) {}
+      }
+    })();
+  </script>
   <style>
     * {
       box-sizing: border-box;
@@ -24,8 +78,88 @@
       user-select: none;
     }
 
+    /* Verification Gate Overlay */
+    #auth-gate {
+      position: fixed;
+      inset: 0;
+      background-color: #0d0d0f;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      padding: 2rem;
+    }
+
+    /* Automatically hide gate when verified */
+    html.is-verified #auth-gate,
+    #auth-gate.hidden {
+      display: none !important;
+    }
+
+    .auth-box {
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .auth-box h2 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #ffffff 0%, #8a8f98 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .auth-box p {
+      color: #8a8f98;
+      font-size: 0.95rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .auth-input {
+      width: 100%;
+      padding: 14px 20px;
+      margin-bottom: 1rem;
+      border-radius: 50px;
+      border: 1px solid #26262c;
+      background-color: #16161a;
+      color: #ffffff;
+      font-size: 1rem;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .auth-input:focus {
+      border-color: #8a8f98;
+    }
+
+    .error-msg {
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      color: #ff5555;
+      height: 1.2rem;
+    }
+
+    /* Normal Launch Page */
     .container {
       padding: 2rem;
+    }
+
+    .verified-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #4ade80;
+      background-color: rgba(74, 222, 128, 0.1);
+      border: 1px solid rgba(74, 222, 128, 0.25);
+      padding: 4px 12px;
+      border-radius: 50px;
+      margin-bottom: 1rem;
     }
 
     h1 {
@@ -77,7 +211,20 @@
 </head>
 <body>
 
+  <!-- One-Time Access Code Gate -->
+  <div id="auth-gate">
+    <div class="auth-box">
+      <h2>prxy+</h2>
+      <p>Enter access code to continue</p>
+      <input type="password" id="access-code" class="auth-input" placeholder="Access code" autocomplete="off">
+      <button type="button" id="verify-btn" class="launch-btn" style="width: 100%;">Verify</button>
+      <div class="error-msg" id="error-msg"></div>
+    </div>
+  </div>
+
+  <!-- Normal Launch Page -->
   <div class="container">
+    <div class="verified-badge">Verified User</div>
     <h1>prxy+</h1>
     <p id="pool-count">Loading links...</p>
     <button class="launch-btn" id="launch-btn">Launch</button>
@@ -85,47 +232,114 @@
   </div>
 
   <script>
-    // Add your list of URLs below
+    const PASSCODE = "zinc";
+    const STORAGE_KEY = "prxy_verified_user";
+
+    function setVerified() {
+      document.documentElement.classList.add("is-verified");
+
+      // 1. Save to window.name
+      try { window.name = STORAGE_KEY; } catch (e) {}
+
+      // 2. Save to URL hash without reloading
+      try { history.replaceState(null, "", "#verified"); } catch (e) {}
+
+      // 3. Save to localStorage & sessionStorage
+      try { localStorage.setItem(STORAGE_KEY, "true"); } catch (e) {}
+      try { sessionStorage.setItem(STORAGE_KEY, "true"); } catch (e) {}
+
+      // 4. Save to 10-year Cookie
+      try {
+        document.cookie = `${STORAGE_KEY}=true; max-age=315360000; path=/; SameSite=Lax`;
+      } catch (e) {}
+
+      // 5. Save to IndexedDB
+      if (window.indexedDB) {
+        try {
+          const req = indexedDB.open("prxy_auth_db", 1);
+          req.onupgradeneeded = (e) => {
+            e.target.result.createObjectStore("auth");
+          };
+          req.onsuccess = (e) => {
+            const db = e.target.result;
+            const tx = db.transaction("auth", "readwrite");
+            tx.objectStore("auth").put(true, STORAGE_KEY);
+          };
+        } catch (e) {}
+      }
+    }
+
+    // Re-sync all storages if already verified via any single layer
+    if (document.documentElement.classList.contains("is-verified")) {
+      setVerified();
+    }
+
+    // --- Verification Logic ---
+    const authGate = document.getElementById("auth-gate");
+    const codeInput = document.getElementById("access-code");
+    const verifyBtn = document.getElementById("verify-btn");
+    const errorMsg = document.getElementById("error-msg");
+
+    function checkCode() {
+      const entered = codeInput.value.trim();
+      if (entered === PASSCODE) {
+        setVerified();
+        authGate.classList.add("hidden");
+      } else {
+        errorMsg.textContent = "Invalid code.";
+        codeInput.value = "";
+        codeInput.focus();
+      }
+    }
+
+    verifyBtn.addEventListener("click", checkCode);
+    codeInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        checkCode();
+      }
+    });
+
+    // --- Normal Launch Page Logic ---
     const urls = [
-      "https://civics60433.z13.web.core.windows.net",
-      "https://envscience53046.z13.web.core.windows.net",
-      "https://vocabulary20784.z13.web.core.windows.net",
-      "https://accounting16313.z13.web.core.windows.net",
-      "https://worldhistory32749.z13.web.core.windows.net",
-      "https://writing80376.z13.web.core.windows.net",
-      "https://math73677.z13.web.core.windows.net",
-      "https://astronomy46310.z13.web.core.windows.net",
-      "https://nutrition80874.z13.web.core.windows.net",
-      "https://theater61419.z13.web.core.windows.net",
-      "https://socialstudies44533.z13.web.core.windows.net",
-      "https://french32539.z13.web.core.windows.net",
-      "https://robotics58512.z13.web.core.windows.net",
-      "https://statistics2100.z13.web.core.windows.net",
-      "https://italian64801.z13.web.core.windows.net",
-      "https://speech3041.z13.web.core.windows.net",
-      "https://physics83094.z13.web.core.windows.net",
-      "https://debate75633.z13.web.core.windows.net",
-      "https://sociology39855.z13.web.core.windows.net",
-      "https://german30880.z13.web.core.windows.net",
-      "https://arthistory19157.z13.web.core.windows.net",
-      "https://anatomy49354.z13.web.core.windows.net",
-      "https://earthscience78025.z13.web.core.windows.net",
-      "https://calculus88958.z13.web.core.windows.net",
-      "https://zoology9429.z13.web.core.windows.net",
-      "https://ethics16463.z13.web.core.windows.net",
-      "https://composition38958.z13.web.core.windows.net",
-      "https://chemistry9519.z13.web.core.windows.net",
-      "https://drawing69931.z13.web.core.windows.net",
-      "https://geometry11765.z13.web.core.windows.net",
-      "https://health94377.z13.web.core.windows.net",
-      "https://latin63392.z13.web.core.windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
+      "https://windows.net",
     ];
 
     const poolCount = document.getElementById("pool-count");
     const launchBtn = document.getElementById("launch-btn");
     const statusText = document.getElementById("status-text");
 
-    // Display total number of links available
     poolCount.textContent = `${urls.length} links in rotation`;
 
     launchBtn.addEventListener("click", () => {
@@ -134,11 +348,9 @@
         return;
       }
 
-      // Pick a random URL
       const randomIndex = Math.floor(Math.random() * urls.length);
       const selectedUrl = urls[randomIndex];
 
-      // Open in a new tab securely
       window.open(selectedUrl, "_blank", "noopener,noreferrer");
 
       statusText.textContent = "Opened new tab. Click again for another.";
