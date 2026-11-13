@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>prxy+</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #0d0d0f;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      text-align: center;
+      user-select: none;
+    }
+
+    .container {
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 4rem;
+      font-weight: 800;
+      letter-spacing: -2px;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #ffffff 0%, #8a8f98 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p {
+      color: #8a8f98;
+      font-size: 1rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .launch-btn {
+      background-color: #ffffff;
+      color: #0d0d0f;
+      border: none;
+      padding: 16px 42px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+      box-shadow: 0 4px 20px rgba(255, 255, 255, 0.15);
+    }
+
+    .launch-btn:hover {
+      transform: translateY(-2px);
+      background-color: #f0f0f0;
+      box-shadow: 0 6px 25px rgba(255, 255, 255, 0.25);
+    }
+
+    .launch-btn:active {
+      transform: translateY(0);
+    }
+
+    .status {
+      margin-top: 1.5rem;
+      font-size: 0.85rem;
+      color: #555962;
+      height: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>prxy+</h1>
+    <p id="pool-count">Loading links...</p>
+    <button class="launch-btn" id="launch-btn">Launch</button>
+    <div class="status" id="status-text"></div>
+  </div>
+
+  <script>
+    // Add your list of URLs below
+    const urls = [
+      "https://civics60433.z13.web.core.windows.net",
+      "https://envscience53046.z13.web.core.windows.net",
+      "https://vocabulary20784.z13.web.core.windows.net",
+      "https://accounting16313.z13.web.core.windows.net",
+      "https://worldhistory32749.z13.web.core.windows.net",
+      "https://writing80376.z13.web.core.windows.net",
+      "https://math73677.z13.web.core.windows.net",
+      "https://astronomy46310.z13.web.core.windows.net",
+      "https://nutrition80874.z13.web.core.windows.net",
+      "https://theater61419.z13.web.core.windows.net",
+      "https://socialstudies44533.z13.web.core.windows.net",
+      "https://french32539.z13.web.core.windows.net",
+      "https://robotics58512.z13.web.core.windows.net",
+      "https://statistics2100.z13.web.core.windows.net",
+      "https://italian64801.z13.web.core.windows.net",
+      "https://speech3041.z13.web.core.windows.net",
+      "https://physics83094.z13.web.core.windows.net",
+      "https://debate75633.z13.web.core.windows.net",
+      "https://sociology39855.z13.web.core.windows.net",
+      "https://german30880.z13.web.core.windows.net",
+      "https://arthistory19157.z13.web.core.windows.net",
+      "https://anatomy49354.z13.web.core.windows.net",
+      "https://earthscience78025.z13.web.core.windows.net",
+      "https://calculus88958.z13.web.core.windows.net",
+      "https://zoology9429.z13.web.core.windows.net",
+      "https://ethics16463.z13.web.core.windows.net",
+      "https://composition38958.z13.web.core.windows.net",
+      "https://chemistry9519.z13.web.core.windows.net",
+      "https://drawing69931.z13.web.core.windows.net",
+      "https://geometry11765.z13.web.core.windows.net",
+      "https://health94377.z13.web.core.windows.net",
+      "https://latin63392.z13.web.core.windows.net",
+    ];
+
+    const poolCount = document.getElementById("pool-count");
+    const launchBtn = document.getElementById("launch-btn");
+    const statusText = document.getElementById("status-text");
+
+    // Display total number of links available
+    poolCount.textContent = `${urls.length} links in rotation`;
+
+    launchBtn.addEventListener("click", () => {
+      if (urls.length === 0) {
+        statusText.textContent = "No URLs configured.";
+        return;
+      }
+
+      // Pick a random URL
+      const randomIndex = Math.floor(Math.random() * urls.length);
+      const selectedUrl = urls[randomIndex];
+
+      // Open in a new tab securely
+      window.open(selectedUrl, "_blank", "noopener,noreferrer");
+
+      statusText.textContent = "Opened new tab. Click again for another.";
+    });
+  </script>
+
+</body>
+</html>
