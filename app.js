@@ -1,5 +1,5 @@
 import { config } from './config.js';
-import { destinations, configurationError, nextRoute, keyTier, activeDelta, localDay, updateStreak, currentStreak, isPremium, normalizeTier, routePool, cleanProfile, BADGE_IDS } from './core.js';
+import { destinations, configurationError, nextRoute, keyTier, activeDelta, localDay, updateStreak, currentStreak, isPremium, normalizeTier, routePool, cleanProfile, BADGE_IDS, canCustomizeAppearance, appearanceForTier, faviconDataUrl } from './core.js';
 import { tierIcons, badgeIcons, badgeDetails, personIcon, closeIcon, navIcons } from './icons.js';
 import { createEffects } from './effects.js';
 const $ = id => document.getElementById(id);
@@ -89,36 +89,79 @@ function renderPool(){
   row.append(details,toggle);$('proxy-list').append(row);
  });
 }
+
+let faviconSource='',faviconLoad=null,requestedFaviconColor='',appliedFaviconColor='';
+function updateFavicon(accent){
+ requestedFaviconColor=accent;
+ if(faviconSource){
+  if(appliedFaviconColor===accent)return;
+  const link=document.querySelector('link[rel="icon"]');
+  link.href=faviconDataUrl(faviconSource,accent);appliedFaviconColor=accent;return;
+ }
+ if(!faviconLoad)faviconLoad=fetch(new URL('./logo.svg',import.meta.url),{cache:'no-cache'})
+  .then(response=>{if(!response.ok)throw new Error('Favicon unavailable');return response.text();})
+  .then(source=>{faviconSource=source;updateFavicon(requestedFaviconColor);})
+  .catch(()=>{faviconLoad=null;});
+}
+
 function applyAppearance(){
- const color=colors.find(c=>c.id===settings.color)||colors[7];const root=document.documentElement;
- const motion=settings.motion&&!reducedMotion.matches;
- for(const [name,value]of Object.entries({'--accent':color.accent,'--button-start':color.start,'--button-end':color.end,'--logo-hue':color.hue,'--font-family':fonts[settings.font],'--glow':`0 0 ${settings.strength*5}px color-mix(in srgb,var(--accent) ${8+settings.strength*2}%,transparent)`}))root.style.setProperty(name,value);
- document.body.classList.toggle('no-glow',!settings.glow);document.body.classList.toggle('no-motion',!motion);
- $('glow').checked=settings.glow;$('motion').checked=settings.motion;$('font').value=settings.font;$('glow-strength').value=settings.strength;$('glow-value').textContent=settings.strength;$('selected-color').textContent=color.label;
- document.querySelectorAll('[data-color]').forEach(button=>{const selected=button.dataset.color===color.id;button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));});
+ const unlocked=canCustomizeAppearance(tier);
+ const appearance=appearanceForTier(tier,settings,cleanSettings({}));
+ $('appearance-controls').disabled=!unlocked;
+ $('appearance-lock').hidden=unlocked;
+ $('appearance').classList.toggle('appearance-locked',!unlocked);
+ const color=colors.find(c=>c.id===appearance.color)||colors[7];const root=document.documentElement;
+ const motion=appearance.motion&&!reducedMotion.matches;
+ for(const [name,value]of Object.entries({'--accent':color.accent,'--button-start':color.start,'--button-end':color.end,'--logo-hue':color.hue,'--font-family':fonts[appearance.font],'--glow':`0 0 ${appearance.strength*5}px color-mix(in srgb,var(--accent) ${8+appearance.strength*2}%,transparent)`}))root.style.setProperty(name,value);
+ document.body.classList.toggle('no-glow',!appearance.glow);document.body.classList.toggle('no-motion',!motion);
+ $('glow').checked=appearance.glow;$('motion').checked=appearance.motion;$('font').value=appearance.font;$('glow-strength').value=appearance.strength;$('glow-value').textContent=appearance.strength;$('selected-color').textContent=color.label;
+ updateFavicon(color.accent);
+ document.querySelectorAll('[data-color]').forEach(button=>{button.disabled=!unlocked;const selected=button.dataset.color===color.id;button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));});
  for(const category of ['wallpaper','trail']){
   $(category+'-access').textContent=isPremium(tier)?'Unlocked':'Premium · locked';
   document.querySelectorAll(`[data-effect="${category}"]`).forEach(button=>{
-   const locked=!isPremium(tier)&&button.dataset.value!=='none';const selected=(isPremium(tier)?settings[category]:'none')===button.dataset.value;
+   const locked=!unlocked||(!isPremium(tier)&&button.dataset.value!=='none');button.disabled=!unlocked;const selected=(isPremium(tier)?settings[category]:'none')===button.dataset.value;
    button.classList.toggle('locked',locked);button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));button.setAttribute('aria-disabled',String(locked));
-   const suffix=locked?' · Premium locked':'';button.setAttribute('aria-label',button.dataset.label+suffix);
+   const suffix=!unlocked?' · Membership required':locked?' · Premium locked':'';button.setAttribute('aria-label',button.dataset.label+suffix);
   });
  }
- $('effects-note').textContent=!isPremium(tier)?'Premium unlocks all wallpapers and trails.':!motion?'Motion is paused by your animation or device preference.':'Effects match your accent. Cursor trails appear when you move a mouse.';
- effects.set({premium:isPremium(tier)&&!booting,wallpaper:settings.wallpaper,trail:settings.trail,color:color.accent,motion});
+ $('effects-note').textContent=!unlocked?'Activate a membership key to customize Veil.':!isPremium(tier)?'Premium unlocks all wallpapers and trails.':!motion?'Motion is paused by your animation or device preference.':'Effects match your accent. Cursor trails appear when you move a mouse.';
+ effects.set({premium:isPremium(tier)&&!booting,wallpaper:appearance.wallpaper,trail:appearance.trail,color:color.accent,motion});
 }
-function render(){renderProfile();renderPool();refreshStats();applyAppearance();$('forget').disabled=tier==='unverified';$('storage-status').textContent=persistent?'This browser':'This visit only';$('launch-note').textContent=tier==='unverified'?'Activate a membership key to launch.':'Ready to launch.';if(!persistent)notify('Browser storage is unavailable. Changes last for this visit only.');}
+function render(){renderAccessGate();renderProfile();renderPool();refreshStats();applyAppearance();$('forget').disabled=tier==='unverified';$('storage-status').textContent=persistent?'This browser':'This visit only';$('launch-note').textContent=tier==='unverified'?'Activate a membership key to launch.':'Ready to launch.';if(!persistent)notify('Browser storage is unavailable. Changes last for this visit only.');}
+
+function renderAccessGate(){
+ const banned=tier==='banned';
+ document.body.classList.toggle('banned',banned);
+ document.querySelector('.app').hidden=banned;
+ $('banned-screen').hidden=!banned;
+ $('banned-screen').inert=booting;
+ if(banned){
+  masterUnlocked=false;
+  document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
+  $('key').value='';
+ }
+}
+
 function navigate(){
+ if(tier==='banned'){
+  pageAnimation?.cancel();currentPage='banned';
+  document.querySelectorAll('.page').forEach(page=>page.hidden=true);
+  if(location.hash!=='#banned')history.replaceState(null,'','#banned');
+  document.title='Veil — BANNED';return;
+ }
+ if(location.hash==='#banned')history.replaceState(null,'','#home');
  const wanted=location.hash.slice(1);const page=['home','launcher','activity','badges','membership','appearance','settings'].includes(wanted)?wanted:'home';
  const changed=page!==currentPage;currentPage=page;pageAnimation?.cancel();document.querySelectorAll('.page').forEach(el=>el.hidden=el.id!==page);
  document.querySelectorAll('[data-page]').forEach(el=>{const active=el.dataset.page===page;el.classList.toggle('active',active);if(active)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
  $('page-box').scrollTop=0;document.title=`Veil — ${titleCase(page)}`;notify('');
  if(page==='launcher')renderPool();if(page==='activity')refreshStats();
- if(changed&&settings.motion&&!reducedMotion.matches&&!booting)pageAnimation=$(page).animate([{opacity:0,transform:'translateY(10px)',filter:'blur(3px)'},{opacity:1,transform:'translateY(0)',filter:'blur(0)'}],{duration:300,easing:'cubic-bezier(.2,.7,.2,1)'});
+ if(changed&&appearanceForTier(tier,settings,cleanSettings({})).motion&&!reducedMotion.matches&&!booting)pageAnimation=$(page).animate([{opacity:0,transform:'translateY(10px)',filter:'blur(3px)'},{opacity:1,transform:'translateY(0)',filter:'blur(0)'}],{duration:300,easing:'cubic-bezier(.2,.7,.2,1)'});
 }
 window.addEventListener('hashchange',navigate);
 function activatePrompt(text){location.hash='membership';navigate();$('activation-message').textContent=text;$('activation-message').className='hint error';$('key').focus();}
 $('launch').addEventListener('click',()=>{
+ if(tier==='banned')return;
  if(tier==='unverified'){activatePrompt('Enter a Member, Premium, or Owner key to unlock launching.');return;}
  const error=configurationError(config);if(error){notify(error);return;}
  const latest=read(KEYS.rotation,rotation);if(latest&&typeof latest==='object')rotation=latest;
@@ -132,8 +175,8 @@ $('launch').addEventListener('click',()=>{
 });
 document.querySelectorAll('[data-buy]').forEach(button=>button.addEventListener('click',()=>showDialog('Contact the owner',`Contact the owner to buy ${button.dataset.buy} for ${button.dataset.buy==='Member'?'$1':'$5'} lifetime. The owner will provide your key.`)));
 async function digestKey(value){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value.trim()))),b=>b.toString(16).padStart(2,'0')).join('');}
-function askName(){if(!profile.named&&!booting&&!$('name-dialog').open&&!$('master-dialog').open){$('first-name').value='';$('name-error').textContent='';$('name-dialog').showModal();$('first-name').focus();}}
-function setTier(value){tier=normalizeTier(value);write(KEYS.member,{status:tier});render();}
+function askName(){if(['member','premium','owner'].includes(tier)&&!profile.named&&!booting&&!$('name-dialog').open&&!$('master-dialog').open){$('first-name').value='';$('name-error').textContent='';$('name-dialog').showModal();$('first-name').focus();}}
+function setTier(value){tier=normalizeTier(value);write(KEYS.member,{status:tier});render();navigate();}
 $('activation-form').addEventListener('submit',async event=>{
  event.preventDefault();const message=$('activation-message');$('verify').disabled=true;message.className='hint';message.textContent='Checking key…';
  try{
@@ -144,6 +187,20 @@ $('activation-form').addEventListener('submit',async event=>{
   setTier(result);$('key').value='';message.className='hint success';message.textContent=`${titleCase(tier)} activated.`;askName();
  }catch(error){message.className='hint error';message.textContent=error.message;}finally{$('verify').disabled=false;}
 });
+
+$('recovery-form').addEventListener('submit',async event=>{
+ event.preventDefault();const message=$('recovery-message');$('recover').disabled=true;message.className='hint';message.textContent='Checking key…';
+ try{
+  if(!crypto?.subtle)throw new Error('Open Veil over HTTPS or localhost.');
+  const result=await keyTier($('recovery-key').value,config);
+  if(!result)throw new Error('Key not recognized. Enter a valid membership key.');
+  $('recovery-key').value='';
+  if(result==='banned')throw new Error('The Banned tier is still active. Use a different membership key.');
+  setTier(result);message.textContent='';askName();
+ }catch(error){message.className='hint error';message.textContent=error.message;}
+ finally{$('recover').disabled=false;}
+});
+
 function normalizedName(value){return value.replace(/[\u0000-\u001f\u007f]/g,'').trim().slice(0,32);}
 $('name-dialog').addEventListener('cancel',event=>event.preventDefault());
 $('name-form').addEventListener('submit',event=>{event.preventDefault();const name=normalizedName($('first-name').value);if(!name){$('name-error').textContent='Enter a name to continue.';return;}profile={...profile,name,named:true};write(KEYS.profile,profile);$('name-dialog').close();renderProfile();});
@@ -174,22 +231,22 @@ function renderBadgeGuide(){
  }
 }
 $('member-plan-icon').innerHTML=tierIcons.member;$('premium-plan-icon').innerHTML=tierIcons.premium;
-for(const color of colors){const button=document.createElement('button');button.type='button';button.className='color-option';button.dataset.color=color.id;button.style.setProperty('--swatch',color.accent);const dot=document.createElement('span');dot.className='color-dot';dot.setAttribute('aria-hidden','true');const label=document.createElement('span');label.textContent=color.label;button.append(dot,label);button.addEventListener('click',()=>{settings.color=color.id;write(KEYS.settings,settings);applyAppearance();});$('color-options').append(button);}
+for(const color of colors){const button=document.createElement('button');button.type='button';button.className='color-option';button.dataset.color=color.id;button.style.setProperty('--swatch',color.accent);const dot=document.createElement('span');dot.className='color-dot';dot.setAttribute('aria-hidden','true');const label=document.createElement('span');label.textContent=color.label;button.append(dot,label);button.addEventListener('click',()=>{if(!canCustomizeAppearance(tier))return;settings.color=color.id;write(KEYS.settings,settings);applyAppearance();});$('color-options').append(button);}
 for(const [category,items]of [['wallpaper',wallpapers],['trail',trails]])for(const [id,label,icon]of [['none','Off','○'],...items]){
  const button=document.createElement('button');button.type='button';button.className='effect-option';button.dataset.effect=category;button.dataset.value=id;button.dataset.label=label;const symbol=document.createElement('span');symbol.className='effect-icon effect-'+id;symbol.textContent=icon;const text=document.createElement('span');text.textContent=label;const lock=document.createElement('small');lock.className='effect-lock';lock.textContent='Premium';button.append(symbol,text,lock);
- button.addEventListener('click',()=>{if(id!=='none'&&!isPremium(tier)){showDialog('Premium effects','Upgrade to Premium ($5 lifetime) to unlock eight animated wallpapers and eight cursor trails.');return;}settings[category]=id;write(KEYS.settings,settings);applyAppearance();});$(category+'-options').append(button);
+ button.addEventListener('click',()=>{if(!canCustomizeAppearance(tier))return;if(id!=='none'&&!isPremium(tier)){showDialog('Premium effects','Upgrade to Premium ($5 lifetime) to unlock eight animated wallpapers and eight cursor trails.');return;}settings[category]=id;write(KEYS.settings,settings);applyAppearance();});$(category+'-options').append(button);
 }
-for(const [id,property,event]of [['font','font','change'],['glow','glow','change'],['glow-strength','strength','input'],['motion','motion','change']])$(id).addEventListener(event,()=>{settings[property]=['glow','motion'].includes(property)?$(id).checked:property==='strength'?Number($(id).value):$(id).value;write(KEYS.settings,settings);applyAppearance();});
+for(const [id,property,event]of [['font','font','change'],['glow','glow','change'],['glow-strength','strength','input'],['motion','motion','change']])$(id).addEventListener(event,()=>{if(!canCustomizeAppearance(tier)){applyAppearance();return;}settings[property]=['glow','motion'].includes(property)?$(id).checked:property==='strength'?Number($(id).value):$(id).value;write(KEYS.settings,settings);applyAppearance();});
 reducedMotion.addEventListener('change',applyAppearance);
 $('forget').addEventListener('click',()=>showDialog('Forget membership?','You will need a key to activate again. Your profile and activity stay saved.',()=>{setTier('unverified');try{localStorage.removeItem('volt.membership.v1');}catch{persistent=false;}notify('Membership forgotten.');}));
 $('reset-stats').addEventListener('click',()=>showDialog('Reset statistics?','This clears activity, streaks, and launch history. Your profile, membership, and exclusions stay saved.',()=>{stats=cleanStats({});sessionMs=0;write(KEYS.stats,stats);refreshStats();notify('Statistics reset.');}));
 $('export').addEventListener('click',()=>{const data={app:'Veil',exportedAt:new Date().toISOString(),membership:tier,profile,stats,settings};const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='veil-data.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);notify('Data exported.');});
 let lastTick=performance.now(),lastActivity=performance.now();
 for(const event of ['pointerdown','pointermove','keydown','touchstart','scroll','focus'])window.addEventListener(event,()=>{lastActivity=performance.now();},{passive:true});
-function tick(){const now=performance.now();const delta=booting?0:activeDelta(now-lastTick,{visible:!document.hidden,focused:document.hasFocus(),idleMs:now-lastActivity});lastTick=now;stats=cleanStats(read(KEYS.stats,stats));if(delta){stats.activeMs+=delta;sessionMs+=delta;stats=updateStreak(stats);const day=localDay();stats.daily[day]=(stats.daily[day]||0)+delta;write(KEYS.stats,stats);}refreshStats();}
+function tick(){const now=performance.now();const delta=booting||tier==='banned'?0:activeDelta(now-lastTick,{visible:!document.hidden,focused:document.hasFocus(),idleMs:now-lastActivity});lastTick=now;stats=cleanStats(read(KEYS.stats,stats));if(delta){stats.activeMs+=delta;sessionMs+=delta;stats=updateStreak(stats);const day=localDay();stats.daily[day]=(stats.daily[day]||0)+delta;write(KEYS.stats,stats);}refreshStats();}
 setInterval(tick,1000);document.addEventListener('visibilitychange',()=>{lastTick=performance.now();});window.addEventListener('pagehide',tick);
-window.addEventListener('storage',event=>{if(event.key===KEYS.member){tier=normalizeTier(read(KEYS.member,{})?.status);render();}if(event.key===KEYS.profile){profile=cleanProfile(read(KEYS.profile,{}));renderProfile();}if(event.key===KEYS.stats){stats=cleanStats(read(KEYS.stats,{}));refreshStats();}if(event.key===KEYS.settings){settings=cleanSettings(read(KEYS.settings,{}));applyAppearance();}if(event.key===KEYS.excluded){const saved=read(KEYS.excluded,[]);excluded=Array.isArray(saved)?saved:[];renderPool();}});
+window.addEventListener('storage',event=>{if(event.key===KEYS.member){tier=normalizeTier(read(KEYS.member,{})?.status);render();navigate();}if(event.key===KEYS.profile){profile=cleanProfile(read(KEYS.profile,{}));renderProfile();}if(event.key===KEYS.stats){stats=cleanStats(read(KEYS.stats,{}));refreshStats();}if(event.key===KEYS.settings){settings=cleanSettings(read(KEYS.settings,{}));applyAppearance();}if(event.key===KEYS.excluded){const saved=read(KEYS.excluded,[]);excluded=Array.isArray(saved)?saved:[];renderPool();}});
 render();navigate();
 const bootStart=performance.now();
-function bootProgress(){const progress=Math.min(1,(performance.now()-bootStart)/5000);$('loading-bar').style.width=`${progress*100}%`;document.querySelector('.loading-track').setAttribute('aria-valuenow',String(Math.round(progress*100)));if(progress<1)requestAnimationFrame(bootProgress);else{booting=false;document.querySelector('.app').removeAttribute('inert');document.body.classList.remove('booting');$('loading-label').textContent='Ready';$('loading-screen').classList.add('loaded');setTimeout(()=>{$('loading-screen').hidden=true;applyAppearance();if(tier!=='unverified')askName();},350);}}
+function bootProgress(){const progress=Math.min(1,(performance.now()-bootStart)/5000);$('loading-bar').style.width=`${progress*100}%`;document.querySelector('.loading-track').setAttribute('aria-valuenow',String(Math.round(progress*100)));if(progress<1)requestAnimationFrame(bootProgress);else{booting=false;document.querySelector('.app').removeAttribute('inert');$('banned-screen').removeAttribute('inert');document.body.classList.remove('booting');$('loading-label').textContent='Ready';$('loading-screen').classList.add('loaded');setTimeout(()=>{$('loading-screen').hidden=true;applyAppearance();if(tier!=='unverified')askName();},350);}}
 requestAnimationFrame(bootProgress);

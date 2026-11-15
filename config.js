@@ -36,6 +36,8 @@ export const config = {
     { name: 'Latin', url: 'https://latin63392.z13.web.core.windows.net', normal: false },
   ],
   // Run npm run keys to set these. Never put plaintext activation keys here.
+  unverifiedKeySha256: '0710206549c821b17ee0ea1b0e6928e9f84d146617ce1e3cb5fff9f99ed4bde4',
+  bannedKeySha256: '5754d8197d7b67d1e3b4832d87ef163b5e63523fcc8a2c4c1b462d2430dd7c01',
   normalKeySha256: '89a84305ac29cfed43eff90e14b2948bdd88db0aa3bd01a338de9845f97e4852',
   plusKeySha256: 'b0f54bf06e0afc44765e9aad2fa6017efcfd7824a195dfd2e01660a81a367654',
   masterKeySha256: 'd0d9c9ad073f8d1edfec538876d56301c6f386793d2e6236f4f363984b9654df',

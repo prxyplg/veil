@@ -1,4 +1,4 @@
-# Veil Hub 3.1
+# Veil Hub 3.3
 
 A browser-local proxy launcher for GitHub Pages, with saved profiles and Premium visual effects.
 
@@ -70,3 +70,17 @@ The logo and name are branding, not a promise of anonymity or traffic protection
 Home uses a standard head-and-shoulders profile avatar. The Veil brand is a more defined hooded figure and also the relative SVG favicon on GitHub Pages. Popup close icons use geometrically centered SVG strokes. Badges has a dedicated page explaining every badge, its meaning and how the owner can award it. Nebula has brighter additive clouds and star detail.
 
 The deployed app has no runtime services, package dependencies, remote fonts, CDN assets, analytics or third-party SDKs. All effect drawing and profile storage are local to each browser. See LIVE-FEATURES.md for what static-only announcements can do and why a global active-user count requires shared infrastructure.
+
+## Version 3.2
+
+Unverified users cannot change any Appearance control. They see the default theme with an activation message. Saved preferences are retained but not applied until Member/Premium/Owner is active; Premium-only effects remain gated separately. Change handlers also check membership, and tier changes update the lock immediately. Device reduced-motion preferences are always respected.
+
+The favicon is recolored to the effective accent using the same local hood SVG. It updates on color selection, reload and membership changes. The SVG is loaded from the same site once, recolored in the browser and applied as a data URL; no external service is used. The original static favicon remains as a fallback.
+
+## Version 3.3: Unverified and Banned keys
+
+The two additional tier keys requested in chat are configured as hashes. One switches to Unverified; the other switches to Banned. Banned is saved under the existing membership storage key. It hides the entire normal app, closes dialogs, disables effects and activity accumulation, and redirects all page hashes to #banned. No sidebar or normal page is visible.
+
+The BANNED screen has a membership-key form. A valid Unverified, Member, Premium or Owner key restores the corresponding tier immediately; wrong keys and the Banned key leave the screen locked. The master code is not accepted as a recovery membership key; use the Owner membership key first. The master menu can also quick-set Banned when already accessible. Names, badges, settings, statistics and exclusions are preserved.
+
+This remains a local-browser convenience status, not a server-enforced ban. The key tool changes the three ordinary membership keys; the special Banned, Unverified and master key hashes are preserved.

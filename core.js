@@ -1,4 +1,5 @@
 export function destinations(proxies, tier) {
+  if (tier === 'banned') return [];
   const unique = new Set();
   return proxies.filter(p => {
     try {
@@ -34,6 +35,8 @@ export function nextRoute(routes, previous = {}, random = Math.random) {
 export async function keyTier(key, config, subtle = globalThis.crypto.subtle) {
   const digest = await subtle.digest('SHA-256', new TextEncoder().encode(key.trim()));
   const hash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+  if (/^[a-f0-9]{64}$/.test(config.bannedKeySha256) && hash === config.bannedKeySha256) return 'banned';
+  if (/^[a-f0-9]{64}$/.test(config.unverifiedKeySha256) && hash === config.unverifiedKeySha256) return 'unverified';
   if (/^[a-f0-9]{64}$/.test(config.ownerKeySha256) && hash === config.ownerKeySha256) return 'owner';
   if (/^[a-f0-9]{64}$/.test(config.plusKeySha256) && hash === config.plusKeySha256) return 'premium';
   if (/^[a-f0-9]{64}$/.test(config.normalKeySha256) && hash === config.normalKeySha256) return 'member';
@@ -63,11 +66,21 @@ export function currentStreak(stats, today = localDay()) {
 }
 
 export function isPremium(tier) { return tier === 'premium' || tier === 'owner'; }
+export function canCustomizeAppearance(tier) { return ['member','premium','owner'].includes(tier); }
+export function appearanceForTier(tier, saved, defaults) {
+  return { ...(canCustomizeAppearance(tier) ? saved : defaults) };
+}
+export function faviconDataUrl(svg, accent) {
+  if (!/^#[a-f0-9]{6}$/i.test(accent)) throw new Error('Invalid accent color');
+  const shade = factor => '#' + accent.slice(1).match(/../g).map(hex => Math.round(parseInt(hex,16)*factor).toString(16).padStart(2,'0')).join('');
+  const tinted = svg.replaceAll('#c18aff',accent).replaceAll('#9670ba',accent).replaceAll('#38234f',shade(.28)).replaceAll('#171121',shade(.12));
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(tinted);
+}
 export function normalizeTier(status) {
-  return status === 'verified' ? 'member' : ['member','premium','owner'].includes(status) ? status : 'unverified';
+  return status === 'verified' ? 'member' : ['member','premium','owner','banned'].includes(status) ? status : 'unverified';
 }
 export function routePool(proxies, tier, excluded = []) {
-  if (normalizeTier(tier) === 'unverified') return [];
+  if (['unverified','banned'].includes(normalizeTier(tier))) return [];
   return destinations(proxies, tier).filter(route => !excluded.includes(route.url));
 }
 export const BADGE_IDS = ['advertiser','admin','helper','bug-tester','friend','early-access','donor','artist'];

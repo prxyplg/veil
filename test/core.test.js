@@ -1,8 +1,9 @@
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { config } from '../config.js';
-import { destinations, configurationError, nextRoute, keyTier, activeDelta, updateStreak, currentStreak, localDay, isPremium, normalizeTier, routePool, cleanProfile, BADGE_IDS } from '../core.js';
+import { destinations, configurationError, nextRoute, keyTier, activeDelta, updateStreak, currentStreak, localDay, isPremium, normalizeTier, routePool, cleanProfile, BADGE_IDS, canCustomizeAppearance, appearanceForTier, faviconDataUrl } from '../core.js';
 test('provided collection has 3 normal and 32 Premium destinations', () => {
   assert.equal(configurationError(config), '');
   assert.equal(destinations(config.proxies, 'member').length, 3);
@@ -106,4 +107,41 @@ test('legacy developer Helper migrates to Admin once; new feedback Helper stays 
 test('all eight community badges round-trip through local profiles', () => {
  assert.equal(BADGE_IDS.length,8);
  assert.deepEqual(cleanProfile({badges:BADGE_IDS,badgeSchema:2}).badges,BADGE_IDS);
+});
+
+test('all appearance customization is locked for Unverified and restored for paid tiers', () => {
+ const saved={color:'red',font:'mono',wallpaper:'nebula',trail:'hearts'};
+ const defaults={color:'purple',font:'system',wallpaper:'none',trail:'none'};
+ assert.equal(canCustomizeAppearance('unverified'),false);
+ for(const tier of ['member','premium','owner']){
+  assert.equal(canCustomizeAppearance(tier),true);
+  assert.deepEqual(appearanceForTier(tier,saved,defaults),saved);
+ }
+ assert.deepEqual(appearanceForTier('unverified',saved,defaults),defaults);
+ assert.equal(saved.color,'red');
+ assert.equal(canCustomizeAppearance('unknown'),false);
+});
+test('favicon uses the selected accent throughout the trusted hood SVG', () => {
+ const source=readFileSync(new URL('../logo.svg',import.meta.url),'utf8');
+ const href=faviconDataUrl(source,'#ff9191');
+ assert.ok(href.startsWith('data:image/svg+xml;charset=utf-8,'));
+ const svg=decodeURIComponent(href.split(',').slice(1).join(','));
+ assert.ok(svg.includes('stroke="#ff9191"'));
+ assert.ok(!svg.includes('#c18aff'));
+ assert.ok(!svg.includes('#9670ba'));
+ assert.ok(svg.includes('linearGradient'));
+ assert.throws(()=>faviconDataUrl(source,'red;bad'),/Invalid accent/);
+});
+
+test('Unverified and Banned keys resolve to their tiers without granting access', async () => {
+ const hash=value=>createHash('sha256').update(value).digest('hex');
+ const keys={unverifiedKeySha256:hash('guest test'),bannedKeySha256:hash('blocked test')};
+ assert.equal(await keyTier(' guest test ',keys),'unverified');
+ assert.equal(await keyTier('blocked test',keys),'banned');
+ assert.equal(await keyTier('invalid',keys),null);
+ assert.equal(normalizeTier('banned'),'banned');
+ assert.equal(routePool(config.proxies,'banned').length,0);
+ assert.equal(destinations(config.proxies,'banned').length,0);
+ assert.equal(canCustomizeAppearance('banned'),false);
+ assert.equal(isPremium('banned'),false);
 });

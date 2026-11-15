@@ -1,4 +1,5 @@
 export const tierIcons = {
+  banned:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="m6 6 12 12" stroke-linecap="round"/></svg>',
   unverified: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7" stroke-dasharray="2 3"/><circle cx="12" cy="10" r="2.5" fill="currentColor"/><path d="M7 17c1-4 9-4 10 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
   member: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3c3 2 6 2 8 3v6c0 5-5 8-8 9-3-1-8-4-8-9V6c2-1 5-1 8-3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m8 12 3 3 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   premium: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M12 6c1 4 2 5 6 6-4 1-5 2-6 6-1-4-2-5-6-6 4-1 5-2 6-6Z" fill="currentColor" stroke="currentColor" stroke-linejoin="round"/></svg>',
