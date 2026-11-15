@@ -1,0 +1,1 @@
+{"name":"veil-hub","version":"4.4.0","private":true,"type":"module","scripts":{"test":"node --test","serve":"node tools/serve.mjs","keys":"node tools/set-keys.mjs"}}
