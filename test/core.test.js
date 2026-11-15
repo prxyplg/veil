@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { config } from '../config.js';
-import { destinations, configurationError, nextRoute, keyTier, activeDelta, updateStreak, currentStreak, localDay, isPremium, normalizeTier, routePool, cleanProfile, BADGE_IDS, canCustomizeAppearance, appearanceForTier, faviconDataUrl } from '../core.js';
+import { destinations, configurationError, nextRoute, keyTier, activeDelta, updateStreak, currentStreak, localDay, isPremium, normalizeTier, routePool, cleanProfile, BADGE_IDS, canCustomizeAppearance, appearanceForTier, faviconDataUrl, recordDirectRoute } from '../core.js';
 test('provided collection has 3 normal and 32 Premium destinations', () => {
   assert.equal(configurationError(config), '');
   assert.equal(destinations(config.proxies, 'member').length, 3);
@@ -92,8 +92,8 @@ test('premium effects are locked below Premium and legacy Verified migrates to M
 });
 test('profile name and badges survive normalization with duplicates and invalid badge IDs removed', () => {
  const profile=cleanProfile({name:'  Avery  ',named:true,badges:['helper','friend','helper','root'],badgeSchema:2});
- assert.deepEqual(profile,{name:'Avery',named:true,badges:['helper','friend'],badgeSchema:2});
- assert.deepEqual(cleanProfile(null),{name:'',named:false,badges:[],badgeSchema:2});
+ assert.deepEqual(profile,{name:'Avery',named:true,badges:['helper','friend'],badgeSchema:2,avatar:''});
+ assert.deepEqual(cleanProfile(null),{name:'',named:false,badges:[],badgeSchema:2,avatar:''});
  assert.equal(cleanProfile({name:'A'.repeat(100)}).name.length,32);
 });
 
@@ -144,4 +144,21 @@ test('Unverified and Banned keys resolve to their tiers without granting access'
  assert.equal(destinations(config.proxies,'banned').length,0);
  assert.equal(canCustomizeAppearance('banned'),false);
  assert.equal(isPremium('banned'),false);
+});
+
+test('direct launch records the route without changing exclusions or repeating it next randomly',()=>{
+ const pool=destinations(config.proxies,'member');const first=nextRoute(pool,{},()=>0);
+ const previous=JSON.parse(JSON.stringify(first.state));
+ const direct=recordDirectRoute(pool,first.state,pool[1].url);
+ assert.equal(direct.last,pool[1].url);assert.ok(!direct.remaining.includes(pool[1].url));
+ assert.deepEqual(first.state,previous);
+ assert.notEqual(nextRoute(pool,direct).url,pool[1].url);
+ const enabled=pool.slice(1);const excludedDirect=recordDirectRoute(enabled,{},pool[0].url);
+ assert.equal(excludedDirect.last,pool[0].url);assert.equal(excludedDirect.remaining.length,2);
+});
+test('Banned always uses red, while Unverified uses the white default without losing saved choices',()=>{
+ const saved={color:'pink',font:'mono'};const defaults={color:'default',font:'system'};
+ assert.equal(appearanceForTier('banned',saved,defaults).color,'red');
+ assert.equal(appearanceForTier('unverified',saved,defaults).color,'default');
+ assert.equal(appearanceForTier('member',saved,defaults).color,'pink');
 });

@@ -1,3 +1,4 @@
+import { ANIMAL_IDS } from './avatars.js';
 export function destinations(proxies, tier) {
   if (tier === 'banned') return [];
   const unique = new Set();
@@ -68,7 +69,18 @@ export function currentStreak(stats, today = localDay()) {
 export function isPremium(tier) { return tier === 'premium' || tier === 'owner'; }
 export function canCustomizeAppearance(tier) { return ['member','premium','owner'].includes(tier); }
 export function appearanceForTier(tier, saved, defaults) {
+  if (tier === 'banned') return { ...defaults, color: 'red' };
   return { ...(canCustomizeAppearance(tier) ? saved : defaults) };
+}
+
+// An explicit route launch counts as a turn if that route is in the rotation.
+// Excluded routes may still be launched manually without re-enabling them.
+export function recordDirectRoute(routes, previous = {}, url) {
+  const ids = routes.map(route => route.url);
+  const signature = JSON.stringify(ids);
+  const remaining = previous.signature === signature && Array.isArray(previous.remaining)
+    ? [...new Set(previous.remaining.filter(item => ids.includes(item)))] : [...ids];
+  return { signature, remaining: remaining.filter(item => item !== url), last: url };
 }
 export function faviconDataUrl(svg, accent) {
   if (!/^#[a-f0-9]{6}$/i.test(accent)) throw new Error('Invalid accent color');
@@ -92,5 +104,6 @@ export function cleanProfile(value = {}) {
     named: value?.named === true,
     badges: [...new Set(migrated.filter(badge=>BADGE_IDS.includes(badge)))],
     badgeSchema: 2,
+    avatar: ANIMAL_IDS.includes(value?.avatar) ? value.avatar : '',
   };
 }

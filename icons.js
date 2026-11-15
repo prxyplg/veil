@@ -33,6 +33,12 @@ export const badgeDetails={
 };
 
 export const navIcons={
+ achievements:svg('<path d="M8 3h8v6a4 4 0 0 1-8 0V3Zm0 2H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4M12 13v5m-4 3h8m-7-3h6v3"/>'),
+ history:svg('<path d="M3 10a9 9 0 1 1 2 8M3 4v6h6m3-3v5l3 2"/>'),
+ help:svg('<circle cx="12" cy="12" r="9"/><path d="M9 8a3 3 0 0 1 6 0c0 2-3 2-3 5"/><circle cx="12" cy="17" r=".7" fill="currentColor"/>'),
+ updates:svg('<rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 7h8M8 12h8M8 17h5"/>'),
+ info:svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="7" r=".8" fill="currentColor"/>'),
+ sites:svg('<path d="M8 7h8c4 0 6 9 4 12-1 2-4-2-5-3H9c-1 1-4 5-5 3-2-3 0-12 4-12Z"/><path d="M8 10v4m-2-2h4"/><circle cx="16" cy="11" r=".8" fill="currentColor"/><circle cx="18" cy="13" r=".8" fill="currentColor"/>'),
  home:svg('<path d="m3 10 9-7 9 7M5 9v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M9 21v-7h6v7"/>'),
  launcher:svg('<path d="M10 15c-2-4 2-10 10-12 1 8-3 13-7 14l-3-2Zm1-5-5 1-3 5 7-1m6-1-1 6-5 1 1-5M7 18l-3 3m2-5-3 3"/><circle cx="16" cy="8" r="2"/>'),
  activity:svg('<path d="M4 3v16a2 2 0 0 0 2 2h15M8 16v-5m5 5V6m5 10V9"/>'),
