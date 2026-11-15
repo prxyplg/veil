@@ -17,9 +17,9 @@ export function openProxyInBlank(value,{openWindow=(...args)=>window.open(...arg
   doc.documentElement.lang='en';
   const meta=doc.createElement('meta');meta.name='viewport';meta.content='width=device-width,initial-scale=1';
   const style=doc.createElement('style');style.textContent=`*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0c0d14;color:#f3eff9;font:12px system-ui,sans-serif}body{display:flex;flex-direction:column}header{height:42px;flex-shrink:0;display:flex;align-items:center;gap:12px;padding:0 15px;background:#11111b;border-bottom:1px solid ${color}55}strong{color:${color};font-size:12px}span{margin-left:auto;color:#a6a0b1;font-size:10px}a{display:inline-flex;align-items:center;padding:5px 10px;border:1px solid ${color}66;border-radius:999px;color:${color};text-decoration:none;font-size:10px}a:focus-visible{outline:2px solid ${color};outline-offset:2px}iframe{display:block;width:100%;flex:1;min-height:0;border:0;background:white}@media(max-width:420px){header{gap:8px;padding:0 10px}span{font-size:9px}}`;
-  doc.head.replaceChildren(meta,style);doc.title='Veil proxy';
+  doc.head.replaceChildren(meta,style);doc.title='Veil X Achroma';
   const bar=doc.createElement('header');
-  const title=doc.createElement('strong');title.textContent='Veil proxy';
+  const title=doc.createElement('strong');title.textContent='Veil X Achroma';
   const hint=doc.createElement('span');hint.textContent='If the frame is blocked:';
   const direct=doc.createElement('a');direct.textContent='Open directly ↗';direct.href=url;direct.target='_self';direct.rel='noreferrer';direct.title='Open the proxy directly if it cannot load inside the frame';
   bar.append(title,hint,direct);
